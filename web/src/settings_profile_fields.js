@@ -479,11 +479,11 @@ function open_edit_form_modal(e) {
                 .addClass("display_in_profile_summary_tooltip disabled_label");
         }
 
-        if (Number.parseInt(field.type, 10) === field_types.SELECT.id) {
+        if (field.type === field_types.SELECT.id) {
             set_up_select_field_edit_form($profile_field_form, field_data);
         }
 
-        if (Number.parseInt(field.type, 10) === field_types.EXTERNAL_ACCOUNT.id) {
+        if (field.type === field_types.EXTERNAL_ACCOUNT.id) {
             $profile_field_form
                 .find("select[name=external_acc_field_type]")
                 .val(field_data.subtype);
@@ -517,7 +517,7 @@ function open_edit_form_modal(e) {
         data.required = $profile_field_form.find("input[name=required]").is(":checked");
 
         const new_field_data = read_field_data_from_form(
-            Number.parseInt(field.type, 10),
+            field.type,
             $profile_field_form,
             field_data,
         );
