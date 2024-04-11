@@ -146,6 +146,15 @@ export const realm_schema = z.object({
     realm_emails_restricted_to_domains: z.boolean(),
     realm_enable_guest_user_indicator: z.boolean(),
     realm_enable_spectator_access: z.boolean(),
+    realm_default_external_accounts: z.record(
+        z.string(),
+        z.object({
+            text: z.string(),
+            url_pattern: z.string(),
+            name: z.string(),
+            hint: z.string(),
+        }),
+    ),
     realm_icon_source: z.string(),
     realm_icon_url: z.string(),
     realm_incoming_webhook_bots: z.array(
