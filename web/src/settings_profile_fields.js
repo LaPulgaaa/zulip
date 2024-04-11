@@ -144,22 +144,22 @@ function read_external_account_field_data($profile_field_form) {
     return field_data;
 }
 
-export function get_value_for_new_option(container) {
+export function get_value_for_new_option($container) {
     let value = 0;
-    for (const row of $(container).find(".choice-row")) {
+    for (const row of $container.find(".choice-row")) {
         value = Math.max(value, Number.parseInt($(row).attr("data-value"), 10) + 1);
     }
     return value;
 }
 
-function create_choice_row(container) {
+function create_choice_row($container) {
     const context = {
         text: "",
-        value: get_value_for_new_option(container),
+        value: get_value_for_new_option($container),
         new_empty_choice_row: true,
     };
     const row_html = render_settings_profile_field_choice(context);
-    $(container).append($(row_html));
+    $container.append($(row_html));
 }
 
 function clear_form_data() {
@@ -341,7 +341,7 @@ function add_choice_row(e) {
     // which will not have the delete button so that there is at least one option present.
     $curr_choice_row.find("button.delete-choice").show();
     const choices_div = e.delegateTarget;
-    create_choice_row(choices_div);
+    create_choice_row($(choices_div));
 }
 
 function delete_choice_row(e) {
@@ -730,7 +730,7 @@ export function do_populate_profile_fields(profile_fields_data) {
 function set_up_select_field() {
     const field_types = realm.custom_profile_field_types;
 
-    create_choice_row("#profile_field_choices");
+    create_choice_row($("#profile_field_choices"));
 
     if (current_user.is_admin) {
         const choice_list = $("#profile_field_choices")[0];
