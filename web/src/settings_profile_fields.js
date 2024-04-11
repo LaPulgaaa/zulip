@@ -260,6 +260,7 @@ function open_custom_profile_field_form_modal() {
         field_data = read_field_data_from_form(
             Number.parseInt(field_type, 10),
             $(".new-profile-field-form"),
+            {},
         );
         const data = {
             name: $("#profile_field_name").val(),
