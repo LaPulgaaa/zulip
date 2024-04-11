@@ -1,5 +1,7 @@
 import $ from "jquery";
-import {Sortable} from "sortablejs";
+import assert from "minimalistic-assert";
+import SortableJS from "sortablejs";
+import {z} from "zod";
 
 import render_confirm_delete_profile_field from "../templates/confirm_dialog/confirm_delete_profile_field.hbs";
 import render_confirm_delete_profile_field_option from "../templates/confirm_dialog/confirm_delete_profile_field_option.hbs";
@@ -18,18 +20,61 @@ import * as settings_ui from "./settings_ui";
 import {current_user, realm} from "./state_data";
 import * as ui_report from "./ui_report";
 
+type ChoiceFields = "value" | "text" | "order";
+type Choice = {
+    [key in ChoiceFields]: string;
+};
+
+const choice_field_data_schema = z.record(
+    z.string(),
+    z.object({
+        text: z.string(),
+        order: z.string(),
+    }),
+);
+type ChoiceFieldData = z.infer<typeof choice_field_data_schema>;
+
+const external_account_field_data_schema = z.object({
+    subtype: z.string(),
+    url_pattern: z.string().optional(),
+});
+type ExternalAccountData = z.infer<typeof external_account_field_data_schema>;
+
+type ExternalAccountField = {
+    id: number;
+    name: string;
+    is_user_field: boolean;
+    is_link: boolean;
+    is_external_account: boolean;
+    type: number;
+    display_in_profile_summary: boolean;
+    required: boolean;
+    value: string;
+    subtype: string;
+    field_data: ExternalAccountData;
+};
+type ProfileField = {
+    order: number;
+    type: number;
+    required: boolean;
+    name: string;
+    field_data: string;
+    hint: string;
+    id: number;
+    display_in_profile_summary?: boolean | undefined;
+};
 const meta = {
     loaded: false,
 };
 
-function display_success_status() {
+function display_success_status(): void {
     const $spinner = $("#admin-profile-field-status").expectOne();
     const success_msg_html = settings_ui.strings.success_html;
     ui_report.success(success_msg_html, $spinner, 1000);
     settings_ui.display_checkmark($spinner);
 }
 
-export function maybe_disable_widgets() {
+export function maybe_disable_widgets(): void {
     if (current_user.is_admin) {
         return;
     }
@@ -40,9 +85,9 @@ export function maybe_disable_widgets() {
 }
 
 let display_in_profile_summary_fields_limit_reached = false;
-let order = [];
+let order: number[] = [];
 
-export function field_type_id_to_string(type_id) {
+export function field_type_id_to_string(type_id: number): string | undefined {
     for (const field_type of Object.values(realm.custom_profile_field_types)) {
         if (field_type.id === type_id) {
             // Few necessary modifications in field-type-name for
@@ -59,7 +104,7 @@ export function field_type_id_to_string(type_id) {
 }
 
 // Checking custom profile field type is valid for showing display on user card checkbox field.
-function is_valid_to_display_in_summary(field_type) {
+function is_valid_to_display_in_summary(field_type: number): boolean {
     const field_types = realm.custom_profile_field_types;
     if (field_type === field_types.LONG_TEXT.id || field_type === field_types.USER.id) {
         return false;
@@ -67,12 +112,13 @@ function is_valid_to_display_in_summary(field_type) {
     return true;
 }
 
-function delete_profile_field(e) {
+function delete_profile_field(e: JQuery.ClickEvent): void {
     e.preventDefault();
     e.stopPropagation();
 
-    const profile_field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id"), 10);
+    const profile_field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id")!, 10);
     const profile_field = get_profile_field(profile_field_id);
+    assert(profile_field !== undefined);
     const active_user_ids = people.get_active_user_ids();
     let users_using_deleting_profile_field = 0;
 
@@ -88,7 +134,7 @@ function delete_profile_field(e) {
         count: users_using_deleting_profile_field,
     });
 
-    function request_delete() {
+    function request_delete(): void {
         const url = "/json/realm/profile_fields/" + profile_field_id;
         const opts = {
             success_continuation() {
@@ -105,8 +151,11 @@ function delete_profile_field(e) {
     });
 }
 
-function read_select_field_data_from_form($profile_field_form, old_field_data) {
-    const field_data = {};
+function read_select_field_data_from_form(
+    $profile_field_form: JQuery,
+    old_field_data: ChoiceFieldData,
+): ChoiceFieldData {
+    const field_data: ChoiceFieldData = {};
     let field_order = 1;
 
     const old_option_value_map = new Map();
@@ -126,7 +175,7 @@ function read_select_field_data_from_form($profile_field_form, old_field_data) {
                 // changes.
                 $(this).attr("data-value", old_option_value_map.get(text));
             }
-            const value = $(this).attr("data-value");
+            const value = Number.parseInt($(this).attr("data-value")!, 10);
             field_data[value] = {text, order: field_order.toString()};
             field_order += 1;
         }
@@ -135,24 +184,30 @@ function read_select_field_data_from_form($profile_field_form, old_field_data) {
     return field_data;
 }
 
-function read_external_account_field_data($profile_field_form) {
-    const field_data = {};
-    field_data.subtype = $profile_field_form.find("select[name=external_acc_field_type]").val();
-    if (field_data.subtype === "custom") {
-        field_data.url_pattern = $profile_field_form.find("input[name=url_pattern]").val();
+function read_external_account_field_data($profile_field_form: JQuery): ExternalAccountData {
+    let url_pattern;
+    const field_data_subtype = $profile_field_form
+        .find<HTMLSelectElement & {type: "select-one"}>("select[name=external_acc_field_type]")
+        .val()!;
+    if (field_data_subtype === "custom") {
+        url_pattern = $profile_field_form.find<HTMLInputElement>("input[name=url_pattern]").val()!;
     }
+    const field_data = {
+        subtype: field_data_subtype,
+        url_pattern,
+    };
     return field_data;
 }
 
-export function get_value_for_new_option($container) {
+export function get_value_for_new_option($container: JQuery): number {
     let value = 0;
     for (const row of $container.find(".choice-row")) {
-        value = Math.max(value, Number.parseInt($(row).attr("data-value"), 10) + 1);
+        value = Math.max(value, Number.parseInt($(row).attr("data-value")!, 10) + 1);
     }
     return value;
 }
 
-function create_choice_row($container) {
+function create_choice_row($container: JQuery): void {
     const context = {
         text: "",
         value: get_value_for_new_option($container),
@@ -162,7 +217,7 @@ function create_choice_row($container) {
     $container.append($(row_html));
 }
 
-function clear_form_data() {
+function clear_form_data(): void {
     const field_types = realm.custom_profile_field_types;
 
     $("#profile_field_name").val("").closest(".input-group").show();
@@ -178,18 +233,23 @@ function clear_form_data() {
     $("#custom_external_account_url_pattern").hide();
     $("#profile_field_external_accounts").hide();
     $("#profile_field_external_accounts_type").val(
-        $("#profile_field_external_accounts_type option:first-child").val(),
+        $("#profile_field_external_accounts_type option:first-child").val()!,
     );
 }
 
-function set_up_create_field_form() {
+function set_up_create_field_form(): void {
     const field_types = realm.custom_profile_field_types;
 
     // Hide error on field type change.
     $("#dialog_error").hide();
     const $field_elem = $("#profile_field_external_accounts");
     const $field_url_pattern_elem = $("#custom_external_account_url_pattern");
-    const profile_field_type = Number.parseInt($("#profile_field_type").val(), 10);
+    const profile_field_type = Number.parseInt(
+        $<HTMLSelectElement & {type: "select-one"}>(
+            "select:not([multiple])#profile_field_type",
+        ).val()!,
+        10,
+    );
 
     $("#profile_field_name").val("").prop("disabled", false);
     $("#profile_field_hint").val("").prop("disabled", false);
@@ -198,9 +258,9 @@ function set_up_create_field_form() {
 
     if (profile_field_type === field_types.EXTERNAL_ACCOUNT.id) {
         $field_elem.show();
-        const profile_field_external_account_type = $(
-            "#profile_field_external_accounts_type",
-        ).val();
+        const profile_field_external_account_type = $<HTMLSelectElement & {type: "select-one"}>(
+            "select:not([multiple])#profile_field_external_accounts_type",
+        ).val()!;
         if (profile_field_external_account_type === "custom") {
             $field_url_pattern_elem.show();
         } else {
@@ -235,33 +295,41 @@ function set_up_create_field_form() {
     }
 }
 
-function read_field_data_from_form(field_type_id, $profile_field_form, old_field_data) {
+function read_field_data_from_form(
+    field_type_id: number,
+    $profile_field_form: JQuery,
+    old_field_data: Record<string, unknown>,
+): ExternalAccountData | ChoiceFieldData | undefined {
     const field_types = realm.custom_profile_field_types;
 
     // Only read field data if we are creating a select field
     // or external account field.
     if (field_type_id === field_types.SELECT.id) {
-        return read_select_field_data_from_form($profile_field_form, old_field_data);
+        const choice_old_field_data = choice_field_data_schema.parse(old_field_data);
+        return read_select_field_data_from_form($profile_field_form, choice_old_field_data);
     } else if (field_type_id === field_types.EXTERNAL_ACCOUNT.id) {
         return read_external_account_field_data($profile_field_form);
     }
     return undefined;
 }
 
-function open_custom_profile_field_form_modal() {
+function open_custom_profile_field_form_modal(): void {
     const html_body = render_add_new_custom_profile_field_form({
         realm_default_external_accounts: realm.realm_default_external_accounts,
         custom_profile_field_types: realm.custom_profile_field_types,
     });
 
-    function create_profile_field() {
+    function create_profile_field(): void {
         let field_data = {};
-        const field_type = $("#profile_field_type").val();
-        field_data = read_field_data_from_form(
-            Number.parseInt(field_type, 10),
-            $(".new-profile-field-form"),
-            {},
-        );
+        const field_type = $<HTMLSelectElement & {type: "select-one"}>(
+            "#profile_field_type",
+        ).val()!;
+        field_data =
+            read_field_data_from_form(
+                Number.parseInt(field_type, 10),
+                $(".new-profile-field-form"),
+                {},
+            ) ?? {};
         const data = {
             name: $("#profile_field_name").val(),
             hint: $("#profile_field_hint").val(),
@@ -281,7 +349,7 @@ function open_custom_profile_field_form_modal() {
         dialog_widget.submit_api_request(channel.post, url, data, opts);
     }
 
-    function set_up_form_fields() {
+    function set_up_form_fields(): void {
         set_up_select_field();
         set_up_external_account_field();
         clear_form_data();
@@ -314,7 +382,7 @@ function open_custom_profile_field_form_modal() {
     });
 }
 
-function disable_submit_btn_if_empty_choices() {
+function disable_submit_btn_if_empty_choices(): void {
     const $choice_text_rows = $("#edit-custom-profile-field-form-modal .choice-row").find(
         ".modal_text_input",
     );
@@ -331,7 +399,7 @@ function disable_submit_btn_if_empty_choices() {
     );
 }
 
-function add_choice_row(e) {
+function add_choice_row(e: JQuery.TriggeredEvent): void {
     disable_submit_btn_if_empty_choices();
     const $curr_choice_row = $(e.target).parent();
     if ($curr_choice_row.next().hasClass("choice-row")) {
@@ -344,13 +412,17 @@ function add_choice_row(e) {
     create_choice_row($(choices_div));
 }
 
-function delete_choice_row(e) {
+function delete_choice_row(e: JQuery.ClickEvent): void {
     const $row = $(e.currentTarget).parent();
     $row.remove();
     disable_submit_btn_if_empty_choices();
 }
 
-function show_modal_for_deleting_options(field, deleted_values, update_profile_field) {
+function show_modal_for_deleting_options(
+    field: ProfileField,
+    deleted_values: Record<string, string>,
+    update_profile_field: () => void,
+): void {
     const active_user_ids = people.get_active_user_ids();
     let users_count_with_deleted_option_selected = 0;
     for (const user_id of active_user_ids) {
@@ -378,11 +450,11 @@ function show_modal_for_deleting_options(field, deleted_values, update_profile_f
     });
 }
 
-function get_profile_field(id) {
+function get_profile_field(id: number): ProfileField | undefined {
     return realm.custom_profile_fields.find((field) => field.id === id);
 }
 
-export function parse_field_choices_from_field_data(field_data) {
+export function parse_field_choices_from_field_data(field_data: ChoiceFieldData): Choice[] {
     const choices = [];
     for (const [value, choice] of Object.entries(field_data)) {
         choices.push({
@@ -391,11 +463,14 @@ export function parse_field_choices_from_field_data(field_data) {
             order: choice.order,
         });
     }
-    choices.sort((a, b) => a.order - b.order);
+    choices.sort((a, b) => Number.parseInt(a.order, 10) - Number.parseInt(b.order, 10));
     return choices;
 }
 
-function set_up_external_account_field_edit_form($profile_field_form, url_pattern_val) {
+function set_up_external_account_field_edit_form(
+    $profile_field_form: JQuery,
+    url_pattern_val: string,
+): void {
     if ($profile_field_form.find("select[name=external_acc_field_type]").val() === "custom") {
         $profile_field_form.find("input[name=url_pattern]").val(url_pattern_val);
         $profile_field_form.find(".custom_external_account_detail").show();
@@ -408,7 +483,10 @@ function set_up_external_account_field_edit_form($profile_field_form, url_patter
     }
 }
 
-function set_up_select_field_edit_form($profile_field_form, field_data) {
+function set_up_select_field_edit_form(
+    $profile_field_form: JQuery,
+    field_data: ChoiceFieldData,
+): void {
     // Re-render field choices in edit form to load initial select data
     const $choice_list = $profile_field_form.find(".edit_profile_field_choices_container");
     $choice_list.off();
@@ -429,26 +507,34 @@ function set_up_select_field_edit_form($profile_field_form, field_data) {
 
     // Add blank choice at last
     create_choice_row($choice_list);
-    Sortable.create($choice_list[0], {
-        onUpdate() {},
+    SortableJS.create($choice_list[0], {
+        onUpdate() {
+            // Do nothing on drag. We process the order on submission.
+        },
         filter: "input",
         preventOnFilter: false,
     });
 }
 
-function open_edit_form_modal(e) {
+function open_edit_form_modal(e: JQuery.ClickEvent): void {
     const field_types = realm.custom_profile_field_types;
 
-    const field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id"), 10);
+    const field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id")!, 10);
     const field = get_profile_field(field_id);
+    if (field === undefined) {
+        return;
+    }
 
-    let field_data = {};
+    let field_data: Record<string, unknown> = {};
     if (field.field_data) {
         field_data = JSON.parse(field.field_data);
     }
-    let choices = [];
+
+    let choices: Choice[] = [];
+
     if (field.type === field_types.SELECT.id) {
-        choices = parse_field_choices_from_field_data(field_data);
+        const choice_field_data = choice_field_data_schema.parse(field_data);
+        choices = parse_field_choices_from_field_data(choice_field_data);
     }
 
     const html_body = render_edit_custom_profile_field_form({
@@ -458,7 +544,7 @@ function open_edit_form_modal(e) {
             hint: field.hint,
             choices,
             display_in_profile_summary: field.display_in_profile_summary === true,
-            required: field.required === true,
+            required: field.required,
             is_select_field: field.type === field_types.SELECT.id,
             is_external_account_field: field.type === field_types.EXTERNAL_ACCOUNT.id,
             valid_to_display_in_summary: is_valid_to_display_in_summary(field.type),
@@ -466,9 +552,9 @@ function open_edit_form_modal(e) {
         realm_default_external_accounts: realm.realm_default_external_accounts,
     });
 
-    function set_initial_values_of_profile_field() {
+    function set_initial_values_of_profile_field(): void {
         const $profile_field_form = $("#edit-custom-profile-field-form-" + field_id);
-
+        assert(field !== undefined);
         // If it exceeds or equals the max limit, we are disabling option for display custom
         // profile field on user card and adding tooptip, unless the field is already checked.
         if (display_in_profile_summary_fields_limit_reached && !field.display_in_profile_summary) {
@@ -481,14 +567,22 @@ function open_edit_form_modal(e) {
         }
 
         if (field.type === field_types.SELECT.id) {
-            set_up_select_field_edit_form($profile_field_form, field_data);
+            const choice_field_data = choice_field_data_schema.parse(field_data);
+            set_up_select_field_edit_form($profile_field_form, choice_field_data);
         }
 
         if (field.type === field_types.EXTERNAL_ACCOUNT.id) {
+            const external_account_field_data =
+                external_account_field_data_schema.parse(field_data);
             $profile_field_form
                 .find("select[name=external_acc_field_type]")
-                .val(field_data.subtype);
-            set_up_external_account_field_edit_form($profile_field_form, field_data.url_pattern);
+                .val(external_account_field_data.subtype);
+            if (external_account_field_data.url_pattern !== undefined) {
+                set_up_external_account_field_edit_form(
+                    $profile_field_form,
+                    external_account_field_data.url_pattern,
+                );
+            }
         }
 
         // Set initial value in edit form
@@ -503,49 +597,55 @@ function open_edit_form_modal(e) {
             .on("click", "button.delete-choice", delete_choice_row);
     }
 
-    function submit_form() {
+    function submit_form(): void {
         const $profile_field_form = $("#edit-custom-profile-field-form-" + field_id);
-
+        assert(field !== undefined);
         // For some reason jQuery's serialize() is not working with
         // channel.patch even though it is supported by $.ajax.
-        const data = {};
 
-        data.name = $profile_field_form.find("input[name=name]").val();
-        data.hint = $profile_field_form.find("input[name=hint]").val();
-        data.display_in_profile_summary = $profile_field_form
+        const name = $profile_field_form.find("input[name=name]").val();
+        const hint = $profile_field_form.find("input[name=hint]").val();
+        const display_in_profile_summary = $profile_field_form
             .find("input[name=display_in_profile_summary]")
             .is(":checked");
-        data.required = $profile_field_form.find("input[name=required]").is(":checked");
+        const required = $profile_field_form.find("input[name=required]").is(":checked");
 
-        const new_field_data = read_field_data_from_form(
-            field.type,
-            $profile_field_form,
-            field_data,
-        );
-        data.field_data = JSON.stringify(new_field_data);
+        const new_field_data =
+            read_field_data_from_form(field.type, $profile_field_form, field_data) ?? {};
 
-        function update_profile_field() {
+        const profile_field_data = JSON.stringify(new_field_data);
+
+        function update_profile_field(): void {
             const url = "/json/realm/profile_fields/" + field_id;
             const opts = {
                 success_continuation() {
                     display_success_status();
                 },
             };
+            const data = {
+                name,
+                hint,
+                display_in_profile_summary,
+                required,
+                field_data: profile_field_data,
+            };
             dialog_widget.submit_api_request(channel.patch, url, data, opts);
         }
 
         if (field.type === field_types.SELECT.id) {
             const new_values = new Set(Object.keys(new_field_data));
-            const deleted_values = {};
-            for (const [value, option] of Object.entries(field_data)) {
+            const deleted_values: Record<string, string> = {};
+            const choice_field_data = choice_field_data_schema.parse(field_data);
+            for (const [value, option] of Object.entries(choice_field_data)) {
                 if (!new_values.has(value)) {
                     deleted_values[value] = option.text;
                 }
             }
 
             if (Object.keys(deleted_values).length !== 0) {
-                const edit_select_field_modal_callback = () =>
+                const edit_select_field_modal_callback = (): void => {
                     show_modal_for_deleting_options(field, deleted_values, update_profile_field);
+                };
                 dialog_widget.close(edit_select_field_modal_callback);
                 return;
             }
@@ -568,7 +668,7 @@ function open_edit_form_modal(e) {
 
 // If exceeds or equals the max limit, we are disabling option for
 // display custom profile field on user card and adding tooltip.
-function update_profile_fields_checkboxes() {
+function update_profile_fields_checkboxes(): void {
     // Disabling only uncheck checkboxes in table, so user should able uncheck checked checkboxes.
     $("#admin_profile_fields_table .display_in_profile_summary_checkbox_false").prop(
         "disabled",
@@ -580,10 +680,10 @@ function update_profile_fields_checkboxes() {
     );
 }
 
-function toggle_display_in_profile_summary_profile_field(e) {
-    const field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id"), 10);
+function toggle_display_in_profile_summary_profile_field(e: JQuery.ClickEvent): void {
+    const field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id")!, 10);
     const field = get_profile_field(field_id);
-
+    assert(field !== undefined);
     let field_data;
     if (field.field_data) {
         field_data = field.field_data;
@@ -606,10 +706,10 @@ function toggle_display_in_profile_summary_profile_field(e) {
     );
 }
 
-function toggle_required(e) {
-    const field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id"), 10);
+function toggle_required(e: JQuery.ClickEvent): void {
+    const field_id = Number.parseInt($(e.currentTarget).attr("data-profile-field-id")!, 10);
     const field = get_profile_field(field_id);
-
+    assert(field !== undefined);
     let field_data;
     if (field.field_data) {
         field_data = field.field_data;
@@ -631,14 +731,14 @@ function toggle_required(e) {
         $profile_field_status,
     );
 }
-export function reset() {
+export function reset(): void {
     meta.loaded = false;
 }
 
-function update_field_order() {
+function update_field_order(): void {
     order = [];
     $(".profile-field-row").each(function () {
-        order.push(Number.parseInt($(this).attr("data-profile-field-id"), 10));
+        order.push(Number.parseInt($(this).attr("data-profile-field-id")!, 10));
     });
     settings_ui.do_settings_change(
         channel.patch,
@@ -648,7 +748,7 @@ function update_field_order() {
     );
 }
 
-export function populate_profile_fields(profile_fields_data) {
+export function populate_profile_fields(profile_fields_data: ProfileField[]): void {
     if (!meta.loaded) {
         // If outside callers call us when we're not loaded, just
         // exit and we'll draw the widgets again during set_up().
@@ -657,7 +757,7 @@ export function populate_profile_fields(profile_fields_data) {
     do_populate_profile_fields(profile_fields_data);
 }
 
-export function do_populate_profile_fields(profile_fields_data) {
+export function do_populate_profile_fields(profile_fields_data: ProfileField[]): void {
     const field_types = realm.custom_profile_field_types;
 
     // We should only call this internally or from tests.
@@ -674,13 +774,13 @@ export function do_populate_profile_fields(profile_fields_data) {
         if (profile_field.field_data) {
             field_data = JSON.parse(profile_field.field_data);
         }
-        let choices = [];
+        let choices: Choice[] = [];
         if (profile_field.type === field_types.SELECT.id) {
             choices = parse_field_choices_from_field_data(field_data);
         }
 
         const display_in_profile_summary = profile_field.display_in_profile_summary === true;
-        const required = profile_field.required === true;
+        const required = profile_field.required;
         $profile_fields_table.append(
             $(
                 render_admin_profile_field_list({
@@ -716,7 +816,7 @@ export function do_populate_profile_fields(profile_fields_data) {
 
     if (current_user.is_admin) {
         const field_list = $("#admin_profile_fields_table")[0];
-        Sortable.create(field_list, {
+        SortableJS.create(field_list, {
             onUpdate: update_field_order,
             filter: "input",
             preventOnFilter: false,
@@ -727,31 +827,36 @@ export function do_populate_profile_fields(profile_fields_data) {
     loading.destroy_indicator($("#admin_page_profile_fields_loading_indicator"));
 }
 
-function set_up_select_field() {
+function set_up_select_field(): void {
     const field_types = realm.custom_profile_field_types;
 
     create_choice_row($("#profile_field_choices"));
 
     if (current_user.is_admin) {
         const choice_list = $("#profile_field_choices")[0];
-        Sortable.create(choice_list, {
-            onUpdate() {},
+        SortableJS.create(choice_list, {
+            onUpdate() {
+                // We process the order on submission, not on drag.
+            },
             filter: "input",
             preventOnFilter: false,
         });
     }
 
-    const field_type = $("#profile_field_type").val();
+    const field_type = $<HTMLSelectElement & {type: "select-one"}>("#profile_field_type").val()!;
 
     if (Number.parseInt(field_type, 10) !== field_types.SELECT.id) {
         // If 'Select' type is already selected, show choice row.
         $("#profile_field_choices_row").hide();
     }
 
-    $("#profile_field_type").on("change", (e) => {
+    $<HTMLSelectElement & {type: "select-one"}>("#profile_field_type").on("change", (e) => {
         // Hide error on field type change.
         $("#dialog_error").hide();
-        const selected_field_id = Number.parseInt($(e.target).val(), 10);
+        const selected_field_id = Number.parseInt(
+            $<HTMLSelectElement & {type: "select-one"}>(e.target).val()!,
+            10,
+        );
         if (selected_field_id === field_types.SELECT.id) {
             $("#profile_field_choices_row").show();
         } else {
@@ -763,7 +868,7 @@ function set_up_select_field() {
     $("#profile_field_choices").on("click", "button.delete-choice", delete_choice_row);
 }
 
-function set_up_external_account_field() {
+function set_up_external_account_field(): void {
     $("#profile_field_type").on("change", () => {
         set_up_create_field_form();
     });
@@ -773,7 +878,7 @@ function set_up_external_account_field() {
     });
 }
 
-export function get_external_account_link(field) {
+export function get_external_account_link(field: ExternalAccountField): string {
     const field_subtype = field.field_data.subtype;
     let field_url_pattern;
 
@@ -782,15 +887,16 @@ export function get_external_account_link(field) {
     } else {
         field_url_pattern = realm.realm_default_external_accounts[field_subtype].url_pattern;
     }
+    assert(field_url_pattern !== undefined);
     return field_url_pattern.replace("%(username)s", () => field.value);
 }
 
-export function set_up() {
+export function set_up(): void {
     build_page();
     maybe_disable_widgets();
 }
 
-export function build_page() {
+export function build_page(): void {
     // create loading indicators
     loading.make_indicator($("#admin_page_profile_fields_loading_indicator"));
     // Populate profile_fields table
