@@ -88,24 +88,28 @@ export function set_up(): void {
 function build_page(): void {
     meta.loaded = true;
     populate_playgrounds(realm.realm_playgrounds);
-    $(".admin_playgrounds_table").on("click", ".delete", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const $btn = $(this);
-        const url =
-            "/json/realm/playgrounds/" + encodeURIComponent($btn.attr("data-playground-id")!);
-        const html_body = render_confirm_delete_playground();
+    $(".admin_playgrounds_table").on(
+        "click",
+        "button.delete",
+        function (this: HTMLButtonElement, e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const $btn = $(this);
+            const url =
+                "/json/realm/playgrounds/" + encodeURIComponent($btn.attr("data-playground-id")!);
+            const html_body = render_confirm_delete_playground();
 
-        confirm_dialog.launch({
-            html_heading: $t_html({defaultMessage: "Delete code playground?"}),
-            html_body,
-            id: "confirm_delete_code_playgrounds_modal",
-            on_click() {
-                dialog_widget.submit_api_request(channel.del, url, {});
-            },
-            loading_spinner: true,
-        });
-    });
+            confirm_dialog.launch({
+                html_heading: $t_html({defaultMessage: "Delete code playground?"}),
+                html_body,
+                id: "confirm_delete_code_playgrounds_modal",
+                on_click() {
+                    dialog_widget.submit_api_request(channel.del, url, {});
+                },
+                loading_spinner: true,
+            });
+        },
+    );
 
     $(".organization form.admin-playground-form")
         .off("submit")

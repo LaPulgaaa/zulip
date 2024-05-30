@@ -322,7 +322,7 @@ export function set_up(): void {
     // Populate emoji table
     populate_emoji();
 
-    $(".admin_emoji_table").on("click", ".delete", function (e) {
+    $(".admin_emoji_table").on("click", "button.delete", function (this: HTMLButtonElement, e) {
         e.preventDefault();
         e.stopPropagation();
         const $btn = $(this);

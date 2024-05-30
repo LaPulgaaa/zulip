@@ -647,9 +647,8 @@ export function initialize(): void {
         }
     });
 
-    $("#lightbox_overlay").on("click", ".center .arrow", function () {
+    $("#lightbox_overlay").on("click", ".center .arrow", function (this: HTMLElement) {
         const direction = $(this).attr("data-direction");
-
         if (direction === "next") {
             next();
         } else if (direction === "prev") {

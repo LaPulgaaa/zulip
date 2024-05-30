@@ -145,7 +145,7 @@ export function set_up(): void {
         },
     });
 
-    $(".admin_exports_table").on("click", ".delete", function (e) {
+    $(".admin_exports_table").on("click", "button.delete", function (this: HTMLButtonElement, e) {
         e.preventDefault();
         e.stopPropagation();
         const $btn = $(this);

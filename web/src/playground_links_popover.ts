@@ -94,7 +94,7 @@ function register_click_handlers(): void {
     $("#main_div, #preview_content, #message-history").on(
         "click",
         ".code_external_link",
-        function (e) {
+        function (this: HTMLElement, e) {
             const $view_in_playground_button = $(this);
             const $codehilite_div = $(this).closest(".codehilite");
             e.stopPropagation();

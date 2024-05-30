@@ -214,28 +214,32 @@ export function build_page(): void {
     // Populate linkifiers table
     populate_linkifiers(realm.realm_linkifiers);
 
-    $(".admin_linkifiers_table").on("click", ".delete", function (e) {
+    $(".admin_linkifiers_table").on(
+        "click",
+        "button.delete",
+        function (this: HTMLButtonElement, e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const $btn = $(this);
+            const html_body = render_confirm_delete_linkifier();
+            const url =
+                "/json/realm/filters/" + encodeURIComponent($btn.attr("data-linkifier-id")!);
+
+            confirm_dialog.launch({
+                html_heading: $t_html({defaultMessage: "Delete linkifier?"}),
+                html_body,
+                id: "confirm_delete_linkifiers_modal",
+                on_click() {
+                    dialog_widget.submit_api_request(channel.del, url, {});
+                },
+                loading_spinner: true,
+            });
+        },
+    );
+
+    $(".admin_linkifiers_table").on("click", "button.edit", function (this: HTMLButtonElement, e) {
         e.preventDefault();
         e.stopPropagation();
-        const $btn = $(this);
-        const html_body = render_confirm_delete_linkifier();
-        const url = "/json/realm/filters/" + encodeURIComponent($btn.attr("data-linkifier-id")!);
-
-        confirm_dialog.launch({
-            html_heading: $t_html({defaultMessage: "Delete linkifier?"}),
-            html_body,
-            id: "confirm_delete_linkifiers_modal",
-            on_click() {
-                dialog_widget.submit_api_request(channel.del, url, {});
-            },
-            loading_spinner: true,
-        });
-    });
-
-    $(".admin_linkifiers_table").on("click", ".edit", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
         const $btn = $(this);
         const linkifier_id = Number.parseInt($btn.attr("data-linkifier-id")!, 10);
         open_linkifier_edit_form(linkifier_id);
