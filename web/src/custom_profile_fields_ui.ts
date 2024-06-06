@@ -10,6 +10,11 @@ import * as pill_typeahead from "./pill_typeahead";
 import {realm} from "./state_data";
 import * as typeahead_helper from "./typeahead_helper";
 import * as user_pill from "./user_pill";
+import * as user_group_pill from "./user_group_pill"
+import type { InputPillContainer } from "./input_pill";
+import type { UserPill } from "./user_pill";
+import { UserGroup } from "./user_groups";
+
 
 export function append_custom_profile_fields(element_id, user_id) {
     const person = people.get_by_user_id(user_id);

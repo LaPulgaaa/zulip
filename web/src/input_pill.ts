@@ -9,6 +9,7 @@ import * as blueslip from "./blueslip";
 import type {EmojiRenderingDetails} from "./emoji";
 import * as keydown_util from "./keydown_util";
 import * as ui_util from "./ui_util";
+import { PillOptions } from "./typeahead_helper";
 
 // See https://zulip.readthedocs.io/en/latest/subsystems/input-pills.html
 
@@ -70,7 +71,7 @@ type InputPillRenderingDetails = {
 };
 
 // These are the functions that are exposed to other modules.
-export type InputPillContainer<T> = {
+export type InputPillContainer<T extends PillOptions> = {
     appendValue: (text: string) => void;
     appendValidatedData: (item: InputPillItem<T>) => void;
     getByElement: (element: HTMLElement) => InputPill<T> | undefined;
@@ -86,7 +87,7 @@ export type InputPillContainer<T> = {
     _get_pills_for_testing: () => InputPill<T>[];
 };
 
-export function create<T>(opts: InputPillCreateOptions<T>): InputPillContainer<T> {
+export function create<T extends PillOptions>(opts: InputPillCreateOptions<T>): InputPillContainer<T> {
     // a stateful object of this `pill_container` instance.
     // all unique instance information is stored in here.
     const store: InputPillStore<T> = {

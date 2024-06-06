@@ -13,7 +13,7 @@ import * as user_group_pill from "./user_group_pill";
 import type {UserGroupPillData} from "./user_group_pill";
 import * as user_pill from "./user_pill";
 import type {UserPillData} from "./user_pill";
-
+import { PillOptions } from "./typeahead_helper";
 function person_matcher(query: string, item: UserPillData): boolean {
     return (
         people.is_known_user_id(item.user_id) && typeahead_helper.query_matches_person(query, item)
@@ -26,9 +26,9 @@ function group_matcher(query: string, item: UserGroupPillData): boolean {
 
 type TypeaheadItem = UserGroupPillData | StreamPillData | UserPillData;
 
-export function set_up(
+export function set_up<T extends PillOptions>(
     $input: JQuery,
-    pills: CombinedPillContainer,
+    pills: CombinedPillContainer<T>,
     opts: {
         user: boolean;
         user_group?: boolean;

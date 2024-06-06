@@ -1,8 +1,8 @@
-import type {InputPillContainer, InputPillItem} from "./input_pill";
+import type { InputPillItem} from "./input_pill";
 import * as peer_data from "./peer_data";
 import * as stream_data from "./stream_data";
 import type {StreamSubscription} from "./sub_store";
-import type {CombinedPillContainer, CombinedPillItem} from "./typeahead_helper";
+import type {CombinedPillContainer, CombinedPillItem, PillOptions} from "./typeahead_helper";
 
 export type StreamPill = {
     type: "stream";
@@ -10,7 +10,7 @@ export type StreamPill = {
     stream_name: string;
 };
 
-type StreamPillWidget = InputPillContainer<StreamPill>;
+// type StreamPillWidget = InputPillContainer<StreamPill>;
 
 export type StreamPillData = StreamSubscription & {type: "stream"};
 
@@ -50,7 +50,7 @@ export function get_stream_name_from_item(item: InputPillItem<StreamPill>): stri
     return item.stream_name;
 }
 
-export function get_user_ids(pill_widget: StreamPillWidget | CombinedPillContainer): number[] {
+export function get_user_ids<T extends PillOptions>(pill_widget: CombinedPillContainer<T>): number[] {
     let user_ids = pill_widget
         .items()
         .flatMap((item) =>
@@ -61,9 +61,9 @@ export function get_user_ids(pill_widget: StreamPillWidget | CombinedPillContain
     return user_ids;
 }
 
-export function append_stream(
+export function append_stream<T extends PillOptions>(
     stream: StreamSubscription,
-    pill_widget: CombinedPillContainer,
+    pill_widget: CombinedPillContainer<T>,
 ): void {
     pill_widget.appendValidatedData({
         type: "stream",
@@ -74,21 +74,21 @@ export function append_stream(
     pill_widget.clear_text();
 }
 
-export function get_stream_ids(pill_widget: CombinedPillContainer): number[] {
+export function get_stream_ids<T extends PillOptions>(pill_widget: CombinedPillContainer<T>): number[] {
     const items = pill_widget.items();
     return items.flatMap((item) => (item.type === "stream" ? item.stream_id : []));
 }
 
-export function filter_taken_streams(
+export function filter_taken_streams<T extends PillOptions>(
     items: StreamSubscription[],
-    pill_widget: CombinedPillContainer,
+    pill_widget: CombinedPillContainer<T>,
 ): StreamSubscription[] {
     const taken_stream_ids = get_stream_ids(pill_widget);
     items = items.filter((item) => !taken_stream_ids.includes(item.stream_id));
     return items;
 }
 
-export function typeahead_source(pill_widget: CombinedPillContainer): StreamPillData[] {
+export function typeahead_source<T extends PillOptions>(pill_widget: CombinedPillContainer<T>): StreamPillData[] {
     const potential_streams = stream_data.get_unsorted_subs();
     return filter_taken_streams(potential_streams, pill_widget).map((stream) => ({
         ...stream,

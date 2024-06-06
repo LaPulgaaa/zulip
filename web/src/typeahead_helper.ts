@@ -32,7 +32,8 @@ export type UserOrMentionPillData = UserOrMention & {
     is_silent?: boolean;
 };
 
-export type CombinedPillContainer = InputPillContainer<StreamPill | UserGroupPill | UserPill>;
+export type PillOptions=StreamPill | UserGroupPill | UserPill;
+export type CombinedPillContainer<T extends PillOptions> = InputPillContainer<T>;
 
 export type CombinedPillItem =
     | InputPillItem<UserPill>

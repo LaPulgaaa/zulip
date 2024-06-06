@@ -4,7 +4,7 @@ import * as input_pill from "./input_pill";
 import type {User} from "./people";
 import * as people from "./people";
 import {realm} from "./state_data";
-import type {CombinedPillContainer, CombinedPillItem} from "./typeahead_helper";
+import type {CombinedPillContainer, CombinedPillItem, PillOptions} from "./typeahead_helper";
 import * as user_status from "./user_status";
 
 // This will be used for pills for things like composing
@@ -90,9 +90,9 @@ export function get_email_from_item(item: InputPillItem<UserPill>): string {
     return item.email;
 }
 
-export function append_person(opts: {
+export function append_person<T extends PillOptions>(opts: {
     person: User;
-    pill_widget: UserPillWidget | CombinedPillContainer;
+    pill_widget: CombinedPillContainer<T>;
 }): void {
     const person = opts.person;
     const pill_widget = opts.pill_widget;
@@ -113,7 +113,7 @@ export function append_person(opts: {
     pill_widget.clear_text();
 }
 
-export function get_user_ids(pill_widget: UserPillWidget | CombinedPillContainer): number[] {
+export function get_user_ids<T extends PillOptions>(pill_widget: CombinedPillContainer<T>): number[] {
     const items = pill_widget.items();
     return items.flatMap((item) => (item.type === "user" ? item.user_id ?? [] : [])); // be defensive about undefined users
 }
@@ -131,8 +131,8 @@ export function has_unconverted_data(pill_widget: UserPillWidget): boolean {
     return has_unknown_items;
 }
 
-export function typeahead_source(
-    pill_widget: CombinedPillContainer,
+export function typeahead_source<T extends PillOptions>(
+    pill_widget: CombinedPillContainer<T>,
     exclude_bots?: boolean,
 ): UserPillData[] {
     const users = exclude_bots ? people.get_realm_active_human_users() : people.get_realm_users();
@@ -142,16 +142,16 @@ export function typeahead_source(
     }));
 }
 
-export function filter_taken_users(
+export function filter_taken_users<T extends PillOptions>(
     items: User[],
-    pill_widget: UserPillWidget | CombinedPillContainer,
+    pill_widget: CombinedPillContainer<T>,
 ): User[] {
     const taken_user_ids = get_user_ids(pill_widget);
     items = items.filter((item) => !taken_user_ids.includes(item.user_id));
     return items;
 }
 
-export function append_user(user: User, pills: CombinedPillContainer): void {
+export function append_user<T extends PillOptions>(user: User, pills: CombinedPillContainer<T>): void {
     if (user) {
         append_person({
             pill_widget: pills,

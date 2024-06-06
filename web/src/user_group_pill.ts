@@ -1,5 +1,5 @@
-import type {InputPillContainer, InputPillItem} from "./input_pill";
-import type {CombinedPillContainer, CombinedPillItem} from "./typeahead_helper";
+import type {InputPillItem} from "./input_pill";
+import type {CombinedPillContainer, CombinedPillItem, PillOptions} from "./typeahead_helper";
 import type {UserGroup} from "./user_groups";
 import * as user_groups from "./user_groups";
 
@@ -9,7 +9,7 @@ export type UserGroupPill = {
     group_name: string;
 };
 
-type UserGroupPillWidget = InputPillContainer<UserGroupPill>;
+// type UserGroupPillWidget = InputPillContainer<UserGroupPill>;
 
 export type UserGroupPillData = UserGroup & {
     type: "user_group";
@@ -46,7 +46,7 @@ export function get_group_name_from_item(item: InputPillItem<UserGroupPill>): st
     return item.group_name;
 }
 
-export function get_user_ids(pill_widget: UserGroupPillWidget | CombinedPillContainer): number[] {
+export function get_user_ids<T extends PillOptions>(pill_widget:CombinedPillContainer<T>): number[] {
     let user_ids = pill_widget
         .items()
         .flatMap((item) =>
@@ -61,7 +61,7 @@ export function get_user_ids(pill_widget: UserGroupPillWidget | CombinedPillCont
     return user_ids;
 }
 
-export function append_user_group(group: UserGroup, pill_widget: CombinedPillContainer): void {
+export function append_user_group<T extends PillOptions>(group: UserGroup, pill_widget: CombinedPillContainer<T>): void {
     pill_widget.appendValidatedData({
         type: "user_group",
         display_value: display_pill(group),
@@ -71,21 +71,21 @@ export function append_user_group(group: UserGroup, pill_widget: CombinedPillCon
     pill_widget.clear_text();
 }
 
-export function get_group_ids(pill_widget: CombinedPillContainer): number[] {
+export function get_group_ids<T extends PillOptions>(pill_widget: CombinedPillContainer<T>): number[] {
     const items = pill_widget.items();
     return items.flatMap((item) => (item.type === "user_group" ? item.group_id : []));
 }
 
-export function filter_taken_groups(
+export function filter_taken_groups<T extends PillOptions>(
     items: UserGroup[],
-    pill_widget: CombinedPillContainer,
+    pill_widget: CombinedPillContainer<T>,
 ): UserGroup[] {
     const taken_group_ids = get_group_ids(pill_widget);
     items = items.filter((item) => !taken_group_ids.includes(item.id));
     return items;
 }
 
-export function typeahead_source(pill_widget: CombinedPillContainer): UserGroupPillData[] {
+export function typeahead_source<T extends PillOptions>(pill_widget: CombinedPillContainer<T>): UserGroupPillData[] {
     const groups = user_groups.get_realm_user_groups();
     return filter_taken_groups(groups, pill_widget).map((user_group) => ({
         ...user_group,

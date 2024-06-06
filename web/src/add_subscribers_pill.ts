@@ -3,7 +3,7 @@ import * as keydown_util from "./keydown_util";
 import type {User} from "./people";
 import * as pill_typeahead from "./pill_typeahead";
 import * as stream_pill from "./stream_pill";
-import type {CombinedPillContainer, CombinedPillItem} from "./typeahead_helper";
+import type {CombinedPillContainer, CombinedPillItem, PillOptions} from "./typeahead_helper";
 import * as user_group_pill from "./user_group_pill";
 import * as user_pill from "./user_pill";
 
@@ -41,12 +41,12 @@ function get_text_from_item(item: CombinedPillItem): string {
     return text;
 }
 
-function set_up_pill_typeahead({
+function set_up_pill_typeahead<T extends PillOptions>({
     pill_widget,
     $pill_container,
     get_users,
 }: {
-    pill_widget: CombinedPillContainer;
+    pill_widget: CombinedPillContainer<T>;
     $pill_container: JQuery;
     get_users: () => User[];
 }): void {
@@ -99,7 +99,7 @@ export function create({
     return pill_widget;
 }
 
-function get_pill_user_ids(pill_widget: CombinedPillContainer): number[] {
+function get_pill_user_ids<T extends PillOptions>(pill_widget: CombinedPillContainer<T>): number[] {
     const user_ids = user_pill.get_user_ids(pill_widget);
     const stream_user_ids = stream_pill.get_user_ids(pill_widget);
     const group_user_ids = user_group_pill.get_user_ids(pill_widget);
@@ -113,7 +113,7 @@ export function set_up_handlers({
     button_selector,
     action,
 }: {
-    get_pill_widget: () => CombinedPillContainer;
+    get_pill_widget: <T extends PillOptions>() => CombinedPillContainer<T>;
     $parent_container: JQuery;
     pill_selector: string;
     button_selector: string;
