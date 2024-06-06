@@ -61,13 +61,14 @@ export function get_user_ids<T extends PillOptions>(pill_widget:CombinedPillCont
     return user_ids;
 }
 
-export function append_user_group<T extends PillOptions>(group: UserGroup, pill_widget: CombinedPillContainer<T>): void {
-    pill_widget.appendValidatedData({
+export function append_user_group<T extends PillOptions>(group: UserGroup, pill_widget: CombinedPillContainer<T>,append_validated_data:(pill_widget:CombinedPillContainer<T>,pill_data:InputPillItem<UserGroupPill>)=>void): void {
+    const pill_data={
         type: "user_group",
         display_value: display_pill(group),
         group_id: group.id,
         group_name: group.name,
-    });
+    } as const;
+    append_validated_data(pill_widget,pill_data);
     pill_widget.clear_text();
 }
 

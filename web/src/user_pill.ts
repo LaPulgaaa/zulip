@@ -93,6 +93,7 @@ export function get_email_from_item(item: InputPillItem<UserPill>): string {
 export function append_person<T extends PillOptions>(opts: {
     person: User;
     pill_widget: CombinedPillContainer<T>;
+    append_validated_data:(pill_widget:CombinedPillContainer<T>,pill_data:InputPillItem<UserPill>)=>void;
 }): void {
     const person = opts.person;
     const pill_widget = opts.pill_widget;
@@ -107,9 +108,8 @@ export function append_person<T extends PillOptions>(opts: {
         img_src: avatar_url,
         status_emoji_info,
         should_add_guest_user_indicator: people.should_add_guest_user_indicator(person.user_id),
-    };
-
-    pill_widget.appendValidatedData(pill_data);
+    } as const;
+    opts.append_validated_data(pill_widget,pill_data);
     pill_widget.clear_text();
 }
 
@@ -151,12 +151,14 @@ export function filter_taken_users<T extends PillOptions>(
     return items;
 }
 
-export function append_user<T extends PillOptions>(user: User, pills: CombinedPillContainer<T>): void {
+export function append_user<T extends PillOptions>(user: User, pills: CombinedPillContainer<T>,append_validated_data:(pill_widget:CombinedPillContainer<T>,pill_data:InputPillItem<UserPill>)=>void): void {
     if (user) {
         append_person({
             pill_widget: pills,
             person: user,
-        });
+            append_validated_data
+        }
+    );
     } else {
         blueslip.warn("Undefined user in function append_user");
     }

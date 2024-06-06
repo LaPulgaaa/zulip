@@ -73,7 +73,7 @@ type InputPillRenderingDetails = {
 // These are the functions that are exposed to other modules.
 export type InputPillContainer<T extends PillOptions> = {
     appendValue: (text: string) => void;
-    appendValidatedData: (item: InputPillItem<T>) => void;
+    appendValidatedData: <G extends PillOptions>(item: InputPillItem<G>) => void;
     getByElement: (element: HTMLElement) => InputPill<T> | undefined;
     items: () => InputPillItem<T>[];
     onPillCreate: (callback: () => void) => void;

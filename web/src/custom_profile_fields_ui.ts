@@ -1,5 +1,5 @@
 import $ from "jquery";
-
+import flatpickr from "flatpickr";
 import render_settings_custom_user_profile_field from "../templates/settings/custom_user_profile_field.hbs";
 
 import {Typeahead} from "./bootstrap_typeahead";
@@ -10,13 +10,23 @@ import * as pill_typeahead from "./pill_typeahead";
 import {realm} from "./state_data";
 import * as typeahead_helper from "./typeahead_helper";
 import * as user_pill from "./user_pill";
-import * as user_group_pill from "./user_group_pill"
-import type { InputPillContainer } from "./input_pill";
+import { CombinedPillContainer } from "./typeahead_helper";
 import type { UserPill } from "./user_pill";
-import { UserGroup } from "./user_groups";
+import { InputPillItem } from "./input_pill";
+import { UserGroupPill } from "./user_group_pill";
+import { StreamPill } from "./stream_pill";
+import type { CustomProfileField } from "./state_data";
 
-
-export function append_custom_profile_fields(element_id, user_id) {
+export function append_validated_data_user_group(pill_widget:CombinedPillContainer<UserPill>,pill_data:InputPillItem<UserGroupPill>){
+    pill_widget.appendValidatedData(pill_data);
+}
+export function append_validated_data_stream(pill_widget:CombinedPillContainer<UserPill>,pill_data:InputPillItem<StreamPill>){
+    pill_widget.appendValidatedData(pill_data);
+}
+export function append_validated_data_user(pill_widget:CombinedPillContainer<UserPill>,pill_data:InputPillItem<UserPill>){
+    pill_widget.appendValidatedData(pill_data);
+}
+export function append_custom_profile_fields(element_id:string, user_id:number) {
     const person = people.get_by_user_id(user_id);
     if (person.is_bot) {
         return;
@@ -75,10 +85,10 @@ export function append_custom_profile_fields(element_id, user_id) {
 }
 
 export function initialize_custom_user_type_fields(
-    element_id,
-    user_id,
-    is_editable,
-    pill_update_handler,
+    element_id:string,
+    user_id:number,
+    is_editable:boolean,
+    pill_update_handler:(field:CustomProfileField,pills:CombinedPillContainer<UserPill>)=>void,
 ) {
     const field_types = realm.custom_profile_field_types;
     const user_pills = new Map();
@@ -90,16 +100,16 @@ export function initialize_custom_user_type_fields(
 
     for (const field of realm.custom_profile_fields) {
         let field_value_raw = people.get_custom_profile_data(user_id, field.id);
-
+        let raw_field_value;
         if (field_value_raw) {
-            field_value_raw = field_value_raw.value;
+            raw_field_value = field_value_raw.value;
         }
 
         // If field is not editable and field value is null, we don't expect
         // pill container for that field and proceed further
         if (field.type === field_types.USER.id && (field_value_raw || is_editable)) {
             const $pill_container = $(element_id)
-                .find(`.custom_user_field[data-field-id="${CSS.escape(field.id)}"] .pill-container`)
+                .find(`.custom_user_field[data-field-id="${CSS.escape(field.id.toString())}"] .pill-container`)
                 .expectOne();
             const pill_config = {
                 exclude_inaccessible_users: is_editable,
@@ -107,11 +117,11 @@ export function initialize_custom_user_type_fields(
             const pills = user_pill.create_pills($pill_container, pill_config);
 
             if (field_value_raw) {
-                const field_value = JSON.parse(field_value_raw);
+                const field_value = JSON.parse(raw_field_value!);
                 if (field_value) {
                     for (const pill_user_id of field_value) {
                         const user = people.get_user_by_id_assert_valid(pill_user_id);
-                        user_pill.append_user(user, pills);
+                        user_pill.append_user(user, pills, append_validated_data_user);
                     }
                 }
             }
@@ -125,12 +135,27 @@ export function initialize_custom_user_type_fields(
                         user: true,
                         exclude_bots: true,
                     };
-                    pill_typeahead.set_up($input, pills, opts);
+                    pill_typeahead.set_up(
+                        $input,
+                        pills,
+                        opts,
+                        append_validated_data_user_group,
+                        append_validated_data_stream,
+                        append_validated_data_user
+                        );
                     pills.onPillRemove(() => {
                         pill_update_handler(field, pills);
                     });
                 } else {
-                    pill_typeahead.set_up($input, pills, {user: true, exclude_bots: true});
+                    pill_typeahead.set_up(
+                        $input,
+                        pills,
+                        {user: true, exclude_bots: true},
+                        append_validated_data_user_group,
+                        append_validated_data_stream,
+                        append_validated_data_user
+
+                    );
                 }
             }
             user_pills.set(field.id, pills);
@@ -140,8 +165,9 @@ export function initialize_custom_user_type_fields(
     return user_pills;
 }
 
-export function initialize_custom_date_type_fields(element_id) {
-    $(element_id).find(".custom_user_field .datepicker").flatpickr({
+export function initialize_custom_date_type_fields(element_id:string) {
+    const $element=$(element_id).find(".custom_user_field .datepicker");
+    flatpickr($element,{
         altInput: true,
         altFormat: "F j, Y",
         allowInput: true,
@@ -150,8 +176,8 @@ export function initialize_custom_date_type_fields(element_id) {
 
     $(element_id)
         .find(".custom_user_field .datepicker")
-        .on("mouseenter", function () {
-            if ($(this).val().length <= 0) {
+        .on("mouseenter", function (this:HTMLInputElement) {
+            if ($(this).val()!.length <= 0) {
                 $(this).parent().find(".remove_date").hide();
             } else {
                 $(this).parent().find(".remove_date").show();
@@ -167,14 +193,14 @@ export function initialize_custom_date_type_fields(element_id) {
         });
 }
 
-export function initialize_custom_pronouns_type_fields(element_id) {
+export function initialize_custom_pronouns_type_fields(element_id:string) {
     const commonly_used_pronouns = [
         $t({defaultMessage: "he/him"}),
         $t({defaultMessage: "she/her"}),
         $t({defaultMessage: "they/them"}),
     ];
-    const bootstrap_typeahead_input = {
-        $element: $(element_id).find(".pronouns_type_field"),
+    const bootstrap_typeahead_input:bootstrap_typeahead.TypeaheadInputElement = {
+        $element: $(element_id).find<HTMLInputElement>(".pronouns_type_field"),
         type: "input",
     };
     new Typeahead(bootstrap_typeahead_input, {

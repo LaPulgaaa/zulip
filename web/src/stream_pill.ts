@@ -64,13 +64,15 @@ export function get_user_ids<T extends PillOptions>(pill_widget: CombinedPillCon
 export function append_stream<T extends PillOptions>(
     stream: StreamSubscription,
     pill_widget: CombinedPillContainer<T>,
+    append_validated_data: (pill_widget:CombinedPillContainer<T>, pill_data:InputPillItem<StreamPill>)=>void
 ): void {
-    pill_widget.appendValidatedData({
+    const pill_data={
         type: "stream",
         display_value: display_pill(stream),
         stream_id: stream.stream_id,
         stream_name: stream.name,
-    });
+    } as const;
+    append_validated_data(pill_widget,pill_data);
     pill_widget.clear_text();
 }
 

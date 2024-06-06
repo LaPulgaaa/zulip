@@ -14,6 +14,7 @@ import type {UserGroupPillData} from "./user_group_pill";
 import * as user_pill from "./user_pill";
 import type {UserPillData} from "./user_pill";
 import { PillOptions } from "./typeahead_helper";
+import { InputPillItem } from "./input_pill";
 function person_matcher(query: string, item: UserPillData): boolean {
     return (
         people.is_known_user_id(item.user_id) && typeahead_helper.query_matches_person(query, item)
@@ -37,6 +38,9 @@ export function set_up<T extends PillOptions>(
         exclude_bots?: boolean;
         update_func?: () => void;
     },
+    append_validated_data_user_group:(pill_widget:CombinedPillContainer<T>,pill_data:InputPillItem<user_group_pill.UserGroupPill>)=>void,
+    append_validated_data_stream:(pill_widget:CombinedPillContainer<T>,pill_data:InputPillItem<stream_pill.StreamPill>)=>void,
+    append_validate_data_user:(pill_widget:CombinedPillContainer<T>,pill_data:InputPillItem<user_pill.UserPill>)=>void
 ): void {
     if (!opts.user && !opts.user_group && !opts.stream) {
         blueslip.error("Unspecified possible item types");
@@ -158,15 +162,15 @@ export function set_up<T extends PillOptions>(
         },
         updater(item: TypeaheadItem, query: string): undefined {
             if (include_streams(query) && item.type === "stream") {
-                stream_pill.append_stream(item, pills);
+                stream_pill.append_stream(item, pills, append_validated_data_stream);
             } else if (include_user_groups && item.type === "user_group") {
-                user_group_pill.append_user_group(item, pills);
+                user_group_pill.append_user_group(item, pills, append_validated_data_user_group);
             } else if (
                 include_users &&
                 item.type === "user" &&
                 people.is_known_user_id(item.user_id)
             ) {
-                user_pill.append_user(item, pills);
+                user_pill.append_user(item, pills, append_validate_data_user);
             }
 
             $input.trigger("focus");
