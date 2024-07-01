@@ -66,6 +66,7 @@ export type RawMessage = {
 } & (
     | {
           type: "private";
+          topic_links?:undefined
       }
     | {
           type: "stream";
@@ -119,6 +120,8 @@ export type Message = (
 
     locally_echoed?: boolean;
     raw_content?: string;
+    failed_request?: boolean;
+    show_slow_send_spinner?:boolean;
 
     // Added in `message_helper.process_new_message`.
     sent_by_me: boolean;

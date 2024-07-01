@@ -189,7 +189,7 @@ export const onboarding_step_schema = one_time_notice_schema;
 // Sync this with zerver.lib.events.do_events_register.
 const current_user_schema = z.object({
     avatar_source: z.string(),
-    avatar_url: NOT_TYPED_YET,
+    avatar_url: z.string().nullable(),
     avatar_url_medium: NOT_TYPED_YET,
     can_create_private_streams: NOT_TYPED_YET,
     can_create_public_streams: NOT_TYPED_YET,
