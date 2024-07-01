@@ -100,7 +100,16 @@ function resend_message(message, $row, {on_send_message_success, send_message}) 
         blueslip.log("Manual resend of message failed");
     }
 
-    send_message(message, on_success, on_error);
+    const request = {
+        type: message.type,
+        to: message.to,
+        content: message.content,
+        topic: message.topic,
+        queue_id: message.queue_id,
+        local_id: message.local_id,
+    };
+
+    send_message(request, on_success, on_error);
 }
 
 export function build_display_recipient(message) {
