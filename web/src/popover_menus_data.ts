@@ -63,7 +63,7 @@ type TopicPopoverContext = {
     all_visibility_policies: AllVisibilityPolicies;
 };
 
-type VisibilityChangePopoverContext = {
+export type VisibilityChangePopoverContext = {
     stream_id: number;
     topic_name: string;
     visibility_policy: number | false;

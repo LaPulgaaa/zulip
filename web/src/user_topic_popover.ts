@@ -7,9 +7,11 @@ import * as popover_menus_data from "./popover_menus_data";
 import {parse_html} from "./ui_util";
 import * as user_topics from "./user_topics";
 import * as util from "./util";
+import type { VisibilityChangePopoverContext } from "./popover_menus_data";
+import assert from "minimalistic-assert";
 
-let visibility_policy_popover_context;
-export function initialize() {
+let visibility_policy_popover_context:VisibilityChangePopoverContext;
+export function initialize():void {
     popover_menus.register_popover_menu(".change_visibility_policy", {
         theme: "popover-menu",
         placement: "bottom",
@@ -31,6 +33,8 @@ export function initialize() {
             const $elt = $(instance.reference).closest(".change_visibility_policy").expectOne();
             const stream_id = $elt.attr("data-stream-id");
             const topic_name = $elt.attr("data-topic-name");
+            assert(stream_id !== undefined);
+            assert(topic_name !== undefined);
             $elt.addClass("visibility-policy-popover-visible");
 
             visibility_policy_popover_context =
@@ -57,7 +61,7 @@ export function initialize() {
                 const start_time = Date.now();
 
                 const visibility_policy = Number.parseInt(
-                    $(e.currentTarget).attr("data-visibility-policy"),
+                    $(e.currentTarget).attr("data-visibility-policy")!,
                     10,
                 );
 
