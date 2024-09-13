@@ -104,7 +104,7 @@ export function initialize() {
                 .expectOne()
                 .removeClass("visibility-policy-popover-visible");
             instance.destroy();
-            popover_menus.popover_instances.change_visibility_policy = undefined;
+            popover_menus.popover_instances.change_visibility_policy = null;
 
             // If the reference is in recent view / inbox, we would ideally restore focus
             // to the reference icon here but we don't do that because there are a lot of
