@@ -8,6 +8,7 @@ import {parse_html} from "./ui_util";
 import * as user_topics from "./user_topics";
 import * as util from "./util";
 
+let visibility_policy_popover_context;
 export function initialize() {
     popover_menus.register_popover_menu(".change_visibility_policy", {
         theme: "popover-menu",
@@ -32,18 +33,20 @@ export function initialize() {
             const topic_name = $elt.attr("data-topic-name");
             $elt.addClass("visibility-policy-popover-visible");
 
-            instance.context =
+            visibility_policy_popover_context =
                 popover_menus_data.get_change_visibility_policy_popover_content_context(
                     Number.parseInt(stream_id, 10),
                     topic_name,
                 );
             instance.setContent(
-                parse_html(render_change_visibility_policy_popover(instance.context)),
+                parse_html(
+                    render_change_visibility_policy_popover(visibility_policy_popover_context),
+                ),
             );
         },
         onMount(instance) {
             const $popper = $(instance.popper);
-            const {stream_id, topic_name} = instance.context;
+            const {stream_id, topic_name} = visibility_policy_popover_context;
 
             if (!stream_id) {
                 popover_menus.hide_current_popover_if_visible(instance);
